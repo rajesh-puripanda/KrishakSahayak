@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, MapPin, Search, ChevronRight, AlertTriangle, CloudRain, TrendingDown, Users, Bell, Sparkles, X, Activity, Eye, CheckCircle2, Layers, BarChart3, PieChart, FileSpreadsheet, Sprout } from 'lucide-react';
+import { ShieldCheck, MapPin, Search, ChevronRight, AlertTriangle, CloudRain, TrendingDown, Users, Bell, Sparkles, X, Activity, Eye, CheckCircle2, Layers, BarChart3, PieChart, FileSpreadsheet, Sprout, Beaker, Leaf } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, BarChart, Bar, Legend } from 'recharts';
 import { MANDI_TREND } from '../../data/mockData';
 import { getAllFarmers, getNewLandRegistrations, dismissLandRegistration } from '../../data/farmerRepository';
+import { getAllSoilSamples } from '../../data/soilRepository';
+import { classifySoilSample } from '../../services/soilAnalysisEngine';
 import TopBar from '../common/TopBar';
 import StatCard from '../common/StatCard';
 import Chip from '../common/Chip';
@@ -44,6 +46,7 @@ export default function OfficerDashboard({ onSelectFarmer }) {
   const { t } = useLanguage();
   const { user } = useAuth();
   const [farmersList, setFarmersList] = useState(getAllFarmers());
+  const [soilSamplesList, setSoilSamplesList] = useState(getAllSoilSamples());
   const [newLandLogs, setNewLandLogs] = useState(getNewLandRegistrations());
   const [filter, setFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
@@ -55,8 +58,13 @@ export default function OfficerDashboard({ onSelectFarmer }) {
       setNewLandLogs(getNewLandRegistrations());
     };
 
+    const handleSoilUpdate = () => setSoilSamplesList(getAllSoilSamples());
     window.addEventListener('krishi_land_registered', handleNewLand);
-    return () => window.removeEventListener('krishi_land_registered', handleNewLand);
+    window.addEventListener('krishi_soil_added', handleSoilUpdate);
+    return () => {
+      window.removeEventListener('krishi_land_registered', handleNewLand);
+      window.removeEventListener('krishi_soil_added', handleSoilUpdate);
+    };
   }, []);
 
   const handleDismissAlert = (e, landId) => {
@@ -350,6 +358,114 @@ export default function OfficerDashboard({ onSelectFarmer }) {
               <Bar dataKey="mopKg" name="MOP Bags" fill="#C97D34" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* DISTRICT SOIL HEALTH & LABORATORY GIS ANALYSIS TABLE */}
+      <div style={{ background: '#FAF4E6', border: '1px solid #D8CBA8', borderRadius: 16, padding: '18px 16px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ background: 'rgba(107,143,92,0.2)', padding: 6, borderRadius: 8 }}>
+              <Beaker size={18} color="#6B8F5C" />
+            </div>
+            <div>
+              <h3 className="disp" style={{ fontSize: 16, fontWeight: 700, color: '#2B2118', margin: 0 }}>
+                District Soil Health GIS & Laboratory Testing Roster
+              </h3>
+              <div style={{ fontSize: 11, color: '#6B5B45', marginTop: 2 }}>
+                ICAR / Soil Health Card Standard Laboratory Soil Test Results across Blocks
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, fontSize: 11, fontWeight: 700 }}>
+            <span style={{ background: '#FFFDF9', border: '1px solid #D8CBA8', padding: '4px 10px', borderRadius: 8, color: '#2B2118' }}>
+              Samples Tested: <strong>{soilSamplesList.length}</strong>
+            </span>
+            <span style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid #10b981', padding: '4px 10px', borderRadius: 8, color: '#10b981' }}>
+              Mean pH: <strong>6.6 (Neutral)</strong>
+            </span>
+          </div>
+        </div>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, textAlign: 'left' }}>
+            <thead>
+              <tr style={{ background: '#2B2118', color: '#FAF4E6' }}>
+                <th style={{ padding: '8px 10px', borderRadius: '6px 0 0 6px' }}>Sample Code</th>
+                <th style={{ padding: '8px 10px' }}>Location / Block</th>
+                <th style={{ padding: '8px 10px' }}>Texture</th>
+                <th style={{ padding: '8px 10px' }}>pH</th>
+                <th style={{ padding: '8px 10px' }}>N (kg/ha)</th>
+                <th style={{ padding: '8px 10px' }}>P (kg/ha)</th>
+                <th style={{ padding: '8px 10px' }}>K (kg/ha)</th>
+                <th style={{ padding: '8px 10px' }}>OC (%)</th>
+                <th style={{ padding: '8px 10px', borderRadius: '0 6px 6px 0' }}>Fertility</th>
+              </tr>
+            </thead>
+            <tbody>
+              {soilSamplesList.map((sample, idx) => {
+                const analysis = classifySoilSample(sample);
+                const isAcidic = sample.ph < 6.5;
+                const isLowN = sample.nitrogen < 280;
+                const isLowP = sample.phosphorus < 10;
+                const isLowK = sample.potassium < 120;
+
+                return (
+                  <tr key={sample.id || idx} style={{ borderBottom: '1px solid #D8CBA8', background: idx % 2 === 0 ? '#FFFDF9' : '#FAF4E6' }}>
+                    <td className="mono" style={{ padding: '10px', fontWeight: 800, color: '#2B2118' }}>
+                      {sample.sample_code}
+                    </td>
+                    <td style={{ padding: '10px' }}>
+                      <div style={{ fontWeight: 600, color: '#2B2118' }}>{sample.village || 'Field Sample'}</div>
+                      <div style={{ fontSize: 10, color: '#8A7B68' }}>{sample.district || 'Khurda'}</div>
+                    </td>
+                    <td style={{ padding: '10px', color: '#6B5B45', fontWeight: 600 }}>
+                      {sample.soil_texture}
+                    </td>
+                    <td style={{ padding: '10px' }}>
+                      <span style={{
+                        background: isAcidic ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)',
+                        color: isAcidic ? '#ef4444' : '#10b981',
+                        border: `1px solid ${isAcidic ? '#ef4444' : '#10b981'}`,
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        fontWeight: 700,
+                        fontSize: 11
+                      }}>
+                        {sample.ph} ({analysis.classifications.ph.category})
+                      </span>
+                    </td>
+                    <td className="mono" style={{ padding: '10px', fontWeight: 700, color: isLowN ? '#ef4444' : '#2B2118' }}>
+                      {sample.nitrogen} {isLowN && <span style={{ fontSize: 9, color: '#ef4444' }}>[LOW]</span>}
+                    </td>
+                    <td className="mono" style={{ padding: '10px', fontWeight: 700, color: isLowP ? '#ef4444' : '#2B2118' }}>
+                      {sample.phosphorus} {isLowP && <span style={{ fontSize: 9, color: '#ef4444' }}>[LOW]</span>}
+                    </td>
+                    <td className="mono" style={{ padding: '10px', fontWeight: 700, color: isLowK ? '#ef4444' : '#2B2118' }}>
+                      {sample.potassium} {isLowK && <span style={{ fontSize: 9, color: '#ef4444' }}>[LOW]</span>}
+                    </td>
+                    <td className="mono" style={{ padding: '10px', color: '#6B5B45' }}>
+                      {sample.organic_carbon}%
+                    </td>
+                    <td style={{ padding: '10px' }}>
+                      <span style={{
+                        background: analysis.overallFertility === 'High' ? '#10b981' : analysis.overallFertility === 'Low' ? '#ef4444' : '#f59e0b',
+                        color: '#fff',
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        fontWeight: 800,
+                        fontSize: 10,
+                        textTransform: 'uppercase'
+                      }}>
+                        {analysis.overallFertility}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 

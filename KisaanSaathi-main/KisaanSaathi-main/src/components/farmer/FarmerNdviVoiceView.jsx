@@ -15,8 +15,9 @@ export default function FarmerNdviVoiceView() {
  const { askAI, loading: aiLoading } = useAIAdvisor();
 
  // Get active farmer's NDVI satellite telemetry
+ // Use farmer's own ndviProfile (from registration) first, fall back to static data for pre-seeded farmers
  const farmerId = user?.id || 1;
- const ndviProfile = getFarmerNdviProfile(farmerId);
+ const ndviProfile = user?.ndviProfile || getFarmerNdviProfile(farmerId);
 
  const [activeLayer, setActiveLayer] = useState('ndvi');
  const [showHistoryChart, setShowHistoryChart] = useState(true);

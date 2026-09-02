@@ -13,6 +13,7 @@ import GlobalSearchBar from '../search/GlobalSearchBar';
 import { CURRENT_WEATHER } from '../../data/weatherData';
 import FarmerNdviVoiceView from './FarmerNdviVoiceView';
 import RegisterLandModal from './RegisterLandModal';
+import SoilAnalysisView from './SoilAnalysisView';
 
 export default function FarmerHome({ onPickTopic }) {
  const { user } = useAuth();

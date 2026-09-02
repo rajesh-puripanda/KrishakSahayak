@@ -17,6 +17,7 @@ import LoansView from './components/farmer/LoansView';
 import SchemesView from './components/farmer/SchemesView';
 import FertilizerAdvisor from './components/farmer/FertilizerAdvisor';
 import MachineryView from './components/farmer/MachineryView';
+import SoilAnalysisView from './components/farmer/SoilAnalysisView';
 
 // Officer Components
 import OfficerDashboard from './components/officer/OfficerDashboard';

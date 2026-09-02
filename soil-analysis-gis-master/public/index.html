@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Soil Analysis GIS</title>
+    <link rel="icon" href="/soil-analysis.png" type="image/x-icon" />
+    <!-- =====================================================
+         LEAFLET
+         ===================================================== -->
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+      crossorigin=""
+    />
+
+    <!-- =====================================================
+         APPLICATION CSS
+         ===================================================== -->
+
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+
+  <body>
+    <!-- =====================================================
+         HEADER
+         ===================================================== -->
+
+    <header class="app-header">
+      <div>
+        <h1>Soil Analysis GIS</h1>
+
+        <p>Spatial Soil Analysis Application</p>
+      </div>
+    </header>
+
+    <!-- =====================================================
+         MAIN DASHBOARD
+         ===================================================== -->
+
+    <main class="dashboard">
+      <!-- =================================================
+           WELCOME
+           ================================================= -->
+
+      <section class="welcome-card">
+        <h2>Soil Analysis Dashboard</h2>
+
+        <p>View and collect geographically referenced soil samples.</p>
+
+        <div class="status">
+          <span class="status-indicator"></span>
+
+          Application is running
+        </div>
+      </section>
+
+      <!-- =================================================
+           STATISTICS
+           ================================================= -->
+
+      <section class="statistics">
+        <div class="stat-card">
+          <h3>Total Samples</h3>
+
+          <div id="sampleCount">0</div>
+        </div>
+
+        <div class="stat-card">
+          <h3>Average pH</h3>
+
+          <div id="averagePh">—</div>
+        </div>
+
+        <div class="stat-card">
+          <h3>Low Nitrogen</h3>
+
+          <div id="lowNitrogen">0</div>
+        </div>
+      </section>
+
+      <!-- =================================================
+           MAP
+           ================================================= -->
+
+      <section class="map-section">
+        <div class="map-header">
+          <div>
+            <h2>Soil Sample Map</h2>
+
+            <p class="map-instruction">
+              Click anywhere on the map to add a soil sample.
+            </p>
+          </div>
+
+          <button id="refreshMap" type="button">Refresh Samples</button>
+        </div>
+
+        <!-- =================================================
+             MAP ERROR
+             ================================================= -->
+
+        <div id="mapError" class="map-error hidden"></div>
+
+        <div id="map"></div>
+      </section>
+
+      <!-- =================================================
+           SELECTED SOIL SAMPLE
+           ================================================= -->
+
+      <section class="selected-sample-section">
+        <div class="section-header">
+          <div>
+            <h2>Selected Soil Sample</h2>
+
+            <p>
+              View detailed laboratory information for the selected soil sample.
+            </p>
+          </div>
+        </div>
+
+        <div id="selectedSampleContainer">
+          <div class="selected-sample-empty">
+            <strong> No soil sample selected </strong>
+
+            <p>
+              Click a soil sample marker on the map to view its laboratory
+              information.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================
+           SOIL ANALYSIS
+           ================================================= -->
+
+      <section class="soil-analysis-section">
+        <div class="section-header">
+          <div>
+            <h2>Soil Analysis</h2>
+
+            <p>Classified interpretation of laboratory soil properties.</p>
+          </div>
+        </div>
+
+        <!-- =================================================
+             CLASSIFIED SOIL ANALYSIS TABLE
+             ================================================= -->
+
+        <div class="table-container">
+          <table class="soil-analysis-table">
+            <thead>
+              <tr>
+                <th>Sample</th>
+
+                <th>pH</th>
+
+                <th>Nitrogen</th>
+
+                <th>Phosphorus</th>
+
+                <th>Potassium</th>
+
+                <th>Organic Carbon</th>
+
+                <th>Electrical Conductivity</th>
+
+                <th>Overall Fertility</th>
+              </tr>
+            </thead>
+
+            <tbody id="soilAnalysisTableBody">
+              <tr>
+                <td colspan="8" class="analysis-empty">
+                  Loading soil analysis...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- =================================================
+           SOIL INTERPRETATION
+           ================================================= -->
+
+      <section class="soil-recommendation-section">
+        <div class="section-header">
+          <div>
+            <h2>Soil Interpretation &amp; Recommendations</h2>
+
+            <p>
+              Interpretation of soil fertility, limiting nutrients, soil
+              reaction, and salinity.
+            </p>
+          </div>
+        </div>
+
+        <!-- =================================================
+             INTERPRETATION SUMMARY TABLE
+             ================================================= -->
+
+        <div class="table-container">
+          <table class="soil-recommendation-table">
+            <thead>
+              <tr>
+                <th>Sample</th>
+
+                <th>Overall Fertility</th>
+
+                <th>Limiting Nutrients</th>
+
+                <th>Soil Reaction</th>
+
+                <th>Salinity</th>
+              </tr>
+            </thead>
+
+            <tbody id="soilRecommendationTableBody">
+              <tr>
+                <td colspan="5" class="recommendation-empty">
+                  Loading soil interpretation...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- =================================================
+             MANAGEMENT OBSERVATIONS
+             ================================================= -->
+
+        <div class="analysis-subsection">
+          <div class="analysis-subsection-header">
+            <h3>Management Observations</h3>
+
+            <p>
+              Sample-specific observations generated from the soil
+              interpretation.
+            </p>
+          </div>
+
+          <div id="managementObservationsContainer">
+            <div class="recommendation-empty">
+              Loading management observations...
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================
+           CROP SUITABILITY
+           ================================================= -->
+
+      <section class="crop-suitability-section">
+        <div class="section-header">
+          <div>
+            <h2>Crop Suitability</h2>
+
+            <p>
+              Crop suitability ranking based on the classified soil conditions.
+            </p>
+          </div>
+        </div>
+
+        <div id="cropSuitabilityContainer">
+          <div class="recommendation-empty">Loading crop suitability...</div>
+        </div>
+      </section>
+
+      <!-- =================================================
+           SOIL MANAGEMENT PLAN
+           ================================================= -->
+
+      <section class="soil-management-section">
+        <div class="section-header">
+          <div>
+            <h2>Soil Management Plan</h2>
+
+            <p>
+              Recommended nutrient, organic matter, soil reaction, salinity, and
+              general management actions.
+            </p>
+          </div>
+        </div>
+
+        <div id="soilManagementContainer">
+          <div class="recommendation-empty">
+            Loading soil management plan...
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- =====================================================
+         ADD SOIL SAMPLE MODAL
+         ===================================================== -->
+
+    <div id="soilSampleModal" class="modal-overlay hidden">
+      <div class="modal">
+        <!-- =================================================
+             MODAL HEADER
+             ================================================= -->
+
+        <div class="modal-header">
+          <div>
+            <h2>Add Soil Sample</h2>
+
+            <p>Enter the laboratory analysis results.</p>
+          </div>
+
+          <button id="closeModal" type="button" class="modal-close">×</button>
+        </div>
+
+        <!-- =================================================
+             FORM
+             ================================================= -->
+
+        <form id="soilSampleForm">
+          <!-- =============================================
+               LOCATION
+               ============================================= -->
+
+          <div class="form-section">
+            <h3>Sample Location</h3>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="sampleCode"> Sample Code * </label>
+
+                <input
+                  type="text"
+                  id="sampleCode"
+                  name="sample_code"
+                  required
+                  maxlength="50"
+                  placeholder="e.g. S-002"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="sampleDate"> Sample Date </label>
+
+                <input type="date" id="sampleDate" name="sample_date" />
+              </div>
+
+              <div class="form-group">
+                <label for="latitude"> Latitude </label>
+
+                <input
+                  type="number"
+                  id="latitude"
+                  name="latitude"
+                  step="any"
+                  readonly
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="longitude"> Longitude </label>
+
+                <input
+                  type="number"
+                  id="longitude"
+                  name="longitude"
+                  step="any"
+                  readonly
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- =============================================
+               DEPTH
+               ============================================= -->
+
+          <div class="form-section">
+            <h3>Sampling Depth</h3>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="depthFrom"> From (cm) </label>
+
+                <input
+                  type="number"
+                  id="depthFrom"
+                  name="depth_from_cm"
+                  min="0"
+                  step="0.01"
+                  value="0"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="depthTo"> To (cm) </label>
+
+                <input
+                  type="number"
+                  id="depthTo"
+                  name="depth_to_cm"
+                  min="0"
+                  step="0.01"
+                  value="15"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- =============================================
+               SOIL CHEMISTRY
+               ============================================= -->
+
+          <div class="form-section">
+            <h3>Soil Analysis</h3>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="ph"> pH </label>
+
+                <input
+                  type="number"
+                  id="ph"
+                  name="ph"
+                  min="0"
+                  max="14"
+                  step="0.01"
+                  placeholder="e.g. 6.8"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="nitrogen"> Nitrogen </label>
+
+                <input
+                  type="number"
+                  id="nitrogen"
+                  name="nitrogen"
+                  min="0"
+                  step="0.01"
+                  placeholder="kg/ha"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="phosphorus"> Phosphorus </label>
+
+                <input
+                  type="number"
+                  id="phosphorus"
+                  name="phosphorus"
+                  min="0"
+                  step="0.01"
+                  placeholder="kg/ha"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="potassium"> Potassium </label>
+
+                <input
+                  type="number"
+                  id="potassium"
+                  name="potassium"
+                  min="0"
+                  step="0.01"
+                  placeholder="kg/ha"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="organicCarbon"> Organic Carbon </label>
+
+                <input
+                  type="number"
+                  id="organicCarbon"
+                  name="organic_carbon"
+                  min="0"
+                  step="0.001"
+                  placeholder="%"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="ec"> Electrical Conductivity </label>
+
+                <input
+                  type="number"
+                  id="ec"
+                  name="electrical_conductivity"
+                  min="0"
+                  step="0.001"
+                  placeholder="dS/m"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="soilTexture"> Soil Texture </label>
+
+                <select id="soilTexture" name="soil_texture">
+                  <option value="">Select texture</option>
+
+                  <option value="Sandy">Sandy</option>
+
+                  <option value="Sandy Loam">Sandy Loam</option>
+
+                  <option value="Loamy">Loamy</option>
+
+                  <option value="Clay Loam">Clay Loam</option>
+
+                  <option value="Clay">Clay</option>
+
+                  <option value="Silty">Silty</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- =============================================
+               FORM ERROR
+               ============================================= -->
+
+          <div id="formError" class="form-error hidden"></div>
+
+          <!-- =============================================
+               ACTIONS
+               ============================================= -->
+
+          <div class="form-actions">
+            <button type="button" id="cancelSample" class="button-secondary">
+              Cancel
+            </button>
+
+            <button type="submit" id="saveSample" class="button-primary">
+              Save Sample
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- =====================================================
+         LEAFLET
+         ===================================================== -->
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      crossorigin=""
+    ></script>
+
+    <!-- =====================================================
+         APPLICATION JAVASCRIPT
+         ===================================================== -->
+
+    <!-- IMPORTANT:
+         map.js MUST load before app.js.
+    -->
+
+    <script src="/js/map.js"></script>
+
+    <script src="/js/app.js"></script>
+  </body>
+</html>
