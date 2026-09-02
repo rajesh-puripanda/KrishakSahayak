@@ -1,0 +1,140 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌱 Farm Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Oriya:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation Bar -->
+        <header class="top-nav">
+            <button id="profileBtn" class="icon-btn" title="Farmer Profile" aria-label="Farmer Profile">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </button>
+
+            <h1 class="brand-title">
+                <span class="sprout-icon">🌱</span> Farm Assistant
+            </h1>
+
+            <button id="audioToggleBtn" class="icon-btn" title="Toggle Sound" aria-label="Toggle Sound">
+                <svg id="speakerOnIcon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                </svg>
+                <svg id="speakerMuteIcon" class="hidden" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                    <line x1="23" y1="9" x2="17" y2="15"></line>
+                    <line x1="17" y1="9" x2="23" y2="15"></line>
+                </svg>
+            </button>
+        </header>
+
+        <!-- Main Hero Voice Interface -->
+        <main class="voice-center">
+            <!-- Ripple animations background -->
+            <div class="mic-stage">
+                <div class="glow-ring glow-ring-1"></div>
+                <div class="glow-ring glow-ring-2"></div>
+                <div class="glow-ring glow-ring-3"></div>
+
+                <!-- Main Microphone Button -->
+                <button id="micBtn" class="mic-button state-idle" aria-label="Microphone">
+                    <div class="mic-inner">
+                        <!-- Idle / Listening Mic Icon -->
+                        <svg id="micIcon" class="state-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                            <line x1="12" y1="19" x2="12" y2="23"></line>
+                            <line x1="8" y1="23" x2="16" y2="23"></line>
+                        </svg>
+
+                        <!-- Thinking Spinner Icon -->
+                        <div id="thinkingSpinner" class="spinner-icon hidden">
+                            <div class="leaf-spin">🌿</div>
+                        </div>
+
+                        <!-- Speaking Waves Icon -->
+                        <div id="speakingWaves" class="wave-icon hidden">
+                            <span class="bar bar1"></span>
+                            <span class="bar bar2"></span>
+                            <span class="bar bar3"></span>
+                            <span class="bar bar4"></span>
+                            <span class="bar bar5"></span>
+                        </div>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Voice Status Text -->
+            <div id="statusLabel" class="status-label">Tap to speak</div>
+            <div id="subStatus" class="sub-status">Speak your question</div>
+
+            <!-- Live Spoken Response Display -->
+            <div id="responseContainer" class="response-container hidden">
+                <div class="response-badge">
+                    <span class="advisor-dot"></span>
+                    <span id="advisorLabel">कृषि सलाहकार</span>
+                </div>
+                <p id="responseText" class="response-text"></p>
+                <div id="userQueryEcho" class="user-query-echo"></div>
+            </div>
+        </main>
+
+        <!-- Bottom Controls & Language Switcher -->
+        <footer class="bottom-controls">
+            <div class="language-pill">
+                <button id="langHi" class="lang-btn active" data-lang="hi">Hindi</button>
+                <span class="lang-divider">|</span>
+                <button id="langOr" class="lang-btn" data-lang="or">Odia</button>
+            </div>
+
+            <!-- Quick Demo Prompts (1-Click for effortless demo) -->
+            <div class="demo-chips-container">
+                <span class="chips-title">Suggested questions:</span>
+                <div id="demoChips" class="demo-chips">
+                    <!-- Populated dynamically based on selected language -->
+                </div>
+            </div>
+        </footer>
+
+        <!-- Minimal Farmer Profile Modal -->
+        <div id="profileModal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <div class="profile-avatar">👨‍🌾</div>
+                    <div>
+                        <h2 class="profile-name">Farmer Ramesh</h2>
+                        <span class="profile-tag">Registered Farmer</span>
+                    </div>
+                    <button id="closeProfileBtn" class="close-btn">&times;</button>
+                </div>
+                <div class="profile-details">
+                    <div class="profile-row">
+                        <span class="profile-label">🌾 Crop</span>
+                        <span class="profile-value">Rice (धान / ଧାନ)</span>
+                    </div>
+                    <div class="profile-row">
+                        <span class="profile-label">📍 Location</span>
+                        <span class="profile-value">Demo Farm</span>
+                    </div>
+                    <div class="profile-row">
+                        <span class="profile-label">📅 Crop Stage</span>
+                        <span class="profile-value">Vegetative (टिलरिंग)</span>
+                    </div>
+                </div>
+                <p class="profile-note">Internal agricultural sensors active. Recommendations automatically tailored.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

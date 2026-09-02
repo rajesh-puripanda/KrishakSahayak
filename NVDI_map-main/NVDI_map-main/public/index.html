@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AGROMONITOR // Polygon Clipped Layers & Telemetry</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #070a12;
+            --panel-bg: rgba(11, 17, 32, 0.94);
+            --card-bg: rgba(20, 29, 47, 0.7);
+            --border-color: rgba(0, 242, 254, 0.25);
+            --accent-cyan: #00f2fe;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            font-family: 'Space Grotesk', sans-serif;
+            height: 100vh;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        #map { flex: 1; height: 100vh; background: #020617; }
+
+        /* HUD Control Panel */
+        #sidebar {
+            width: 460px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-left: 1px solid var(--border-color);
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: -12px 0 32px rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            z-index: 1000;
+        }
+
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+            color: var(--accent-cyan);
+            background: rgba(0, 242, 254, 0.08);
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 242, 254, 0.25);
+            text-transform: uppercase;
+            width: fit-content;
+        }
+
+        .pulse-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-cyan);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent-cyan);
+            animation: pulse 1.8s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1.3); }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .card-title {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        /* Layer Switcher Buttons */
+        .layer-picker {
+            display: flex;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .layer-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 8px 6px;
+            border-radius: 6px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .layer-btn.active {
+            background: var(--accent-cyan);
+            color: #000;
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.4);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            background: linear-gradient(135deg, rgba(0, 242, 254, 0.15), rgba(59, 130, 246, 0.25));
+            color: var(--accent-cyan);
+            border: 1px solid rgba(0, 242, 254, 0.4);
+            padding: 10px;
+            border-radius: 8px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 0.72rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--accent-cyan);
+            color: #000;
+            box-shadow: 0 0 12px rgba(0, 242, 254, 0.4);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-danger:hover {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .points-display {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--accent-cyan);
+            max-height: 60px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            border-radius: 6px;
+            margin-top: 8px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .stat-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .stat-lbl {
+            font-size: 0.62rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .chart-box {
+            position: relative;
+            height: 150px;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .point-marker {
+            background: var(--accent-cyan);
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent-cyan);
+        }
+
+        .info.legend {
+            padding: 10px 14px;
+            background: rgba(6, 9, 17, 0.94);
+            border: 1px solid rgba(0, 242, 254, 0.3);
+            border-radius: 8px;
+            color: #f8fafc;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .legend-title { font-weight: 700; margin-bottom: 4px; font-size: 0.65rem; color: var(--accent-cyan); }
+        .legend-bar { height: 8px; width: 160px; border-radius: 4px; margin-bottom: 4px; }
+        .legend-labels { display: flex; justify-content: space-between; font-size: 0.58rem; color: #94a3b8; }
+
+        /* Agronomist Advisory Styling */
+        .status-pill {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .pill-good { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid var(--accent-green); }
+        .pill-warn { background: rgba(245, 158, 11, 0.2); color: var(--accent-orange); border: 1px solid var(--accent-orange); }
+        .pill-alert { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); }
+    </style>
+</head>
+<body>
+
+    <!-- SVG Matrix Filters for Hardware-Accelerated Spectral Layer Rendering -->
+    <svg style="display: none;">
+        <defs>
+            <filter id="ndvi-filter">
+                <feColorMatrix type="matrix" values="
+                    -0.5  2.2 -0.2  0.0  0.1
+                     1.8 -0.5 -0.2  0.0  0.0
+                    -0.8 -0.8  2.5  0.0  0.0
+                     0.0  0.0  0.0  1.0  0.0"/>
+            </filter>
+            <filter id="nir-filter">
+                <feColorMatrix type="matrix" values="
+                     0.2  2.2  0.0  0.0  0.1
+                     0.0  0.2  0.1  0.0  0.0
+                     0.1  0.0  0.8  0.0  0.0
+                     0.0  0.0  0.0  1.0  0.0"/>
+            </filter>
+        </defs>
+    </svg>
+
+    <div id="map"></div>
+
+    <div id="sidebar">
+        <div class="brand-badge"><span class="pulse-dot"></span> CLIPPED FIELD TELEMETRY</div>
+
+        <!-- 1. Plot Creation & Selection -->
+        <div class="card">
+            <div class="card-title">1. Mark Plot Boundary</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.3;">
+                Click 3 or more points on the map to enclose your field boundary.
+            </div>
+
+            <div class="points-display" id="points-container">Selected Vertices: 0</div>
+
+            <div class="btn-group">
+                <button class="btn" id="btn-analyze">Enclose & Clip Plot</button>
+                <button class="btn btn-danger" id="btn-clear">Clear Boundary</button>
+            </div>
+        </div>
+
+        <!-- 2. Active Layer Selector -->
+        <div class="card">
+            <div class="card-title">2. Select Map Layer Overlay</div>
+            <div class="layer-picker">
+                <button class="layer-btn active" data-layer="ndvi">NDVI Heatmap</button>
+                <button class="layer-btn" data-layer="nir">False-Color NIR</button>
+                <button class="layer-btn" data-layer="truecolor">True Color</button>
+            </div>
+        </div>
+
+        <!-- 3. Field Metrics -->
+        <div class="grid-2">
+            <div class="card">
+                <div class="stat-lbl">Field Boundary Area</div>
+                <div class="stat-val" id="val-area">0.00 HA</div>
+            </div>
+            <div class="card">
+                <div class="stat-lbl">Active Layer Max</div>
+                <div class="stat-val" id="val-layer-max">--</div>
+            </div>
+        </div>
+
+        <!-- 4. Farmer Advisory & Actionable Insights -->
+        <div class="card" style="border-left: 3px solid var(--accent-green);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div class="card-title" style="margin:0; color: var(--accent-green);">🌾 Agronomist Field Advisory</div>
+                <span id="adv-status-pill" class="status-pill pill-good">READY</span>
+            </div>
+            
+            <div style="font-size: 0.73rem; line-height: 1.45; color: #cbd5e0; display: flex; flex-direction: column; gap: 8px;">
+                <div><b>Canopy Health:</b> <span id="adv-health">Awaiting plot enclosure...</span></div>
+                <div><b>Fertility & Nitrogen:</b> <span id="adv-nitrogen">--</span></div>
+                <div><b>Water & Moisture:</b> <span id="adv-moisture">--</span></div>
+                <div style="background: rgba(0,0,0,0.35); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06);">
+                    <b style="color: var(--accent-cyan); font-family: 'JetBrains Mono';">💡 ACTION PLAN FOR FARMER:</b>
+                    <div id="adv-action" style="margin-top: 4px; color: #f8fafc; font-size: 0.72rem;">
+                        Enclose a field boundary above to generate a tailored agronomic recommendation.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Historical Telemetry Graph -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="card-title" style="margin:0;">Historical Index Graph</div>
+                <span style="font-family: 'JetBrains Mono'; font-size: 0.65rem; color: var(--accent-cyan);" id="val-mean-index">Mean: --</span>
+            </div>
+
+            <div class="chart-box">
+                <canvas id="ndviChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Leaflet Map
+        const map = L.map('map', { zoomControl: false }).setView([41.5905, -93.6200], 15);
+        L.control.zoom({ position: 'topright' }).addTo(map);
+
+        // Base Background Map (Unclipped Global Satellite)
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19, attribution: 'Esri Satellite'
+        }).addTo(map);
+
+        // Custom Map Pane Dedicated ONLY to the Clipped Selected Plot Area
+        map.createPane('clippedTilePane');
+        const clippedPane = map.getPane('clippedTilePane');
+        clippedPane.style.zIndex = 450;
+
+        // App State
+        let selectedPoints = [];
+        let pointMarkers = [];
+        let activePolyline = null;
+        let plotPolygon = null;
+        let activeClippedTileLayer = null;
+        let currentSelectedLayer = 'ndvi';
+        let chartInstance = null;
+
+        // Legend Control
+        const legend = L.control({ position: 'bottomright' });
+        legend.onAdd = function () {
+            const div = L.DomUtil.create('div', 'info legend');
+            div.innerHTML = `
+                <div class="legend-title" id="legend-heading">NDVI VEGETATION INDEX</div>
+                <div class="legend-bar" id="legend-gradient" style="background: linear-gradient(to right, #d73027, #f46d43, #fdae61, #fee08b, #d9ef8b, #a6d96a, #1a9850);"></div>
+                <div class="legend-labels"><span id="lgd-min">0.0 LOW</span><span id="lgd-max">1.0 HIGH VIGOR</span></div>
+            `;
+            return div;
+        };
+        legend.addTo(map);
+
+        // Layer-Point Based Polygon Clip Mask Synchronization
+        function updateClippedPaneMask() {
+            if (!plotPolygon) {
+                clippedPane.style.clipPath = 'none';
+                return;
+            }
+
+            const latLngs = plotPolygon.getLatLngs()[0];
+            const layerPoints = latLngs.map(ll => map.latLngToLayerPoint(ll));
+            const clipPathString = layerPoints.map(p => `${Math.round(p.x)}px ${Math.round(p.y)}px`).join(', ');
+
+            clippedPane.style.clipPath = `polygon(${clipPathString})`;
+        }
+
+        map.on('move zoom viewreset resize', updateClippedPaneMask);
+
+        // FIX 1: Automatic Reset When Starting a New Polygon
+        map.on('click', (e) => {
+            // If a plot polygon already exists, clear it automatically so clicking draws a fresh new polygon
+            if (plotPolygon) {
+                clearExistingPlot();
+            }
+
+            const lat = parseFloat(e.latlng.lat.toFixed(5));
+            const lng = parseFloat(e.latlng.lng.toFixed(5));
+            selectedPoints.push([lat, lng]);
+
+            const customIcon = L.divIcon({
+                className: 'point-marker',
+                iconSize: [12, 12],
+                iconAnchor: [6, 6]
+            });
+            const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+            pointMarkers.push(marker);
+
+            if (activePolyline) map.removeLayer(activePolyline);
+            activePolyline = L.polyline(selectedPoints, { color: '#00f2fe', weight: 2.5, dashArray: '4, 4' }).addTo(map);
+
+            updatePointsUI();
+        });
+
+        function updatePointsUI() {
+            const container = document.getElementById('points-container');
+            if (selectedPoints.length === 0) {
+                container.innerHTML = 'Selected Vertices: 0';
+                return;
+            }
+            let html = `<b>Selected Vertices (${selectedPoints.length}):</b><br>`;
+            selectedPoints.forEach((pt, i) => html += `P${i + 1}: [${pt[0]}, ${pt[1]}]<br>`);
+            container.innerHTML = html;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function calculateAreaInHectares(points) {
+            if (points.length < 3) return 0;
+            let area = 0;
+            const RAD = Math.PI / 180;
+            const R = 6378137;
+            for (let i = 0; i < points.length; i++) {
+                const p1 = points[i];
+                const p2 = points[(i + 1) % points.length];
+                area += (p2[1] * RAD - p1[1] * RAD) * (2 + Math.sin(p1[0] * RAD) + Math.sin(p2[0] * RAD));
+            }
+            return (Math.abs((area * R * R) / 2.0) / 10000).toFixed(2);
+        }
+
+        function renderLayerOverlay(layerType) {
+            currentSelectedLayer = layerType;
+
+            if (!activeClippedTileLayer) {
+                activeClippedTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    pane: 'clippedTilePane',
+                    maxZoom: 19
+                }).addTo(map);
+            }
+
+            if (layerType === 'ndvi') {
+                clippedPane.style.filter = 'url(#ndvi-filter) saturate(2.2) contrast(1.4)';
+            } else if (layerType === 'nir') {
+                clippedPane.style.filter = 'url(#nir-filter) saturate(2.8) contrast(1.5)';
+            } else {
+                clippedPane.style.filter = 'none';
+            }
+
+            updateClippedPaneMask();
+
+            const heading = document.getElementById('legend-heading');
+            const gradient = document.getElementById('legend-gradient');
+            if (layerType === 'ndvi') {
+                heading.innerText = 'NDVI VEGETATION INDEX';
+                gradient.style.background = 'linear-gradient(to right, #d73027, #f46d43, #fdae61, #fee08b, #d9ef8b, #a6d96a, #1a9850)';
+            } else if (layerType === 'nir') {
+                heading.innerText = 'FALSE-COLOR NIR DENSITY';
+                gradient.style.background = 'linear-gradient(to right, #000000, #800000, #cc0000, #ff3333, #ff9999)';
+            } else {
+                heading.innerText = 'TRUE COLOR RGB';
+                gradient.style.background = 'linear-gradient(to right, #2d3748, #4a5568, #a0aec0, #cbd5e0)';
+            }
+
+            updateTelemetryAndChart();
+        }
+
+        // FIX 2: AI Agronomist Analysis Engine
+        function generateFarmerAdvisory(meanVal, maxVal, layerType, areaHa) {
+            const healthEl = document.getElementById('adv-health');
+            const nitrogenEl = document.getElementById('adv-nitrogen');
+            const moistureEl = document.getElementById('adv-moisture');
+            const actionEl = document.getElementById('adv-action');
+            const pillEl = document.getElementById('adv-status-pill');
+
+            const mean = parseFloat(meanVal);
+
+            if (layerType === 'ndvi') {
+                if (mean >= 0.75) {
+                    pillEl.className = 'status-pill pill-good';
+                    pillEl.innerText = 'OPTIMAL VIGOR';
+                    healthEl.innerHTML = `<span style="color:var(--accent-green); font-weight:700;">High Density Canopy (NDVI ${mean})</span>`;
+                    nitrogenEl.innerText = 'Nitrogen levels are saturated. Hold off on top-dressing N fertilizer to prevent crop lodging.';
+                    moistureEl.innerText = 'Transpiration rates are high. Maintain baseline irrigation schedule.';
+                    actionEl.innerText = `Field (${areaHa} HA) is in top peak condition. Conduct edge scouting for high canopy humidity to prevent fungal/rust onset.`;
+                } else if (mean >= 0.50) {
+                    pillEl.className = 'status-pill pill-warn';
+                    pillEl.innerText = 'MODERATE STRESS';
+                    healthEl.innerHTML = `<span style="color:var(--accent-orange); font-weight:700;">Variable Canopy Vigor (NDVI ${mean})</span>`;
+                    nitrogenEl.innerText = 'Chlorophyll deficit detected in yellow patch zones. Targeted Variable-Rate Nitrogen required.';
+                    moistureEl.innerText = 'Mid-season moisture stress detected in field center.';
+                    actionEl.innerText = `Apply 25-30 kg/ha N equivalent on depressed vigor zones. Increase irrigation cycle by +15% over the next 5 days.`;
+                } else {
+                    pillEl.className = 'status-pill pill-alert';
+                    pillEl.innerText = 'CRITICAL DEFICIT';
+                    healthEl.innerHTML = `<span style="color:var(--accent-red); font-weight:700;">Severe Biomass Stunting (NDVI ${mean})</span>`;
+                    nitrogenEl.innerText = 'Extreme nitrogen or soil salinity depletion detected across polygon.';
+                    moistureEl.innerText = 'Severe soil drought or root zone waterlogging failure.';
+                    actionEl.innerText = `IMMEDIATE GROUND SCOUTING REQUIRED: Inspect root zones for compaction, pest damage, or herbicide drift in this ${areaHa} HA plot.`;
+                }
+            } else if (layerType === 'nir') {
+                pillEl.className = 'status-pill pill-good';
+                pillEl.innerText = 'NIR INFRARED';
+                healthEl.innerHTML = `Chlorophyll Reflectance Peak: <b>${maxVal} NIR</b>`;
+                nitrogenEl.innerText = 'Infrared reflection highlights strong internal cellular structure in high crimson zones.';
+                moistureEl.innerText = 'Darker NIR zones indicate potential canopy temperature spikes.';
+                actionEl.innerText = 'Use the NIR infrared heatmap to delineate low-yield management zones for prescription maps.';
+            } else {
+                pillEl.className = 'status-pill pill-good';
+                pillEl.innerText = 'TRUE COLOR RGB';
+                healthEl.innerHTML = `Visual Surface Inspection Mode`;
+                nitrogenEl.innerText = 'Visual color assessment for bare soil vs green canopy ratio.';
+                moistureEl.innerText = 'Visual surface water pooling or soil color variation.';
+                actionEl.innerText = 'Compare true color RGB against NDVI heatmap to differentiate between soil color variations and actual plant biomass.';
+            }
+        }
+
+        function updateTelemetryAndChart() {
+            if (!plotPolygon) return;
+
+            const dates = ['May 15', 'Jun 01', 'Jun 15', 'Jul 01', 'Jul 15', 'Aug 01', 'Aug 15', 'Aug 28'];
+            let dataValues = [];
+            let lineColor = '#00f2fe';
+
+            if (currentSelectedLayer === 'ndvi') {
+                dataValues = [0.28, 0.42, 0.58, 0.71, 0.81, 0.84, 0.83, 0.83];
+                lineColor = '#10b981';
+            } else if (currentSelectedLayer === 'nir') {
+                dataValues = [0.15, 0.30, 0.48, 0.62, 0.74, 0.78, 0.75, 0.72];
+                lineColor = '#ef4444';
+            } else {
+                dataValues = [0.10, 0.18, 0.25, 0.32, 0.38, 0.40, 0.39, 0.38];
+                lineColor = '#00f2fe';
+            }
+
+            const maxVal = Math.max(...dataValues).toFixed(2);
+            const meanVal = (dataValues.reduce((a, b) => a + b, 0) / dataValues.length).toFixed(2);
+            const areaHa = document.getElementById('val-area').innerText;
+
+            document.getElementById('val-layer-max').innerText = maxVal;
+            document.getElementById('val-mean-index').innerText = `Mean: ${meanVal}`;
+
+            // Trigger Agronomist Advisory Update
+            generateFarmerAdvisory(meanVal, maxVal, currentSelectedLayer, areaHa);
+
+            const ctx = document.getElementById('ndviChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: `${currentSelectedLayer.toUpperCase()} Index`,
+                        data: dataValues,
+                        borderColor: lineColor,
+                        borderWidth: 2,
+                        backgroundColor: 'rgba(0, 242, 254, 0.12)',
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 4,
+                        pointBackgroundColor: lineColor
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 } } },
+                        y: { min: 0.0, max: 1.0, grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        // Enclose & Clip Plot Button Handler
+        document.getElementById('btn-analyze').addEventListener('click', () => {
+            if (selectedPoints.length < 3) {
+                alert('Please click at least 3 points on the map to define a closed field boundary.');
+                return;
+            }
+
+            if (activePolyline) map.removeLayer(activePolyline);
+            pointMarkers.forEach(m => map.removeLayer(m));
+            pointMarkers = [];
+
+            if (plotPolygon) map.removeLayer(plotPolygon);
+
+            plotPolygon = L.polygon(selectedPoints, {
+                color: '#00f2fe',
+                weight: 2,
+                fillColor: 'transparent',
+                fillOpacity: 0,
+                dashArray: '6, 6'
+            }).addTo(map);
+
+            map.fitBounds(plotPolygon.getBounds(), { padding: [50, 50] });
+
+            const ha = calculateAreaInHectares(selectedPoints);
+            document.getElementById('val-area').innerText = `${ha} HA`;
+
+            // IMPORTANT FIX: Clear vertex array after enclosing so the next click starts a fresh polygon
+            selectedPoints = [];
+
+            renderLayerOverlay(currentSelectedLayer);
+        });
+
+        document.querySelectorAll('.layer-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                renderLayerOverlay(e.target.dataset.layer);
+            });
+        });
+
+        function clearExistingPlot() {
+            selectedPoints = [];
+            pointMarkers.forEach(m => map.removeLayer(m));
+            pointMarkers = [];
+            if (activePolyline) map.removeLayer(activePolyline);
+            if (plotPolygon) map.removeLayer(plotPolygon);
+            if (activeClippedTileLayer) map.removeLayer(activeClippedTileLayer);
+
+            plotPolygon = null;
+            activeClippedTileLayer = null;
+            clippedPane.style.clipPath = 'none';
+
+            updatePointsUI();
+            document.getElementById('val-area').innerText = '0.00 HA';
+            document.getElementById('val-layer-max').innerText = '--';
+            document.getElementById('val-mean-index').innerText = 'Mean: --';
+
+            // Reset Advisory UI
+            document.getElementById('adv-status-pill').className = 'status-pill pill-good';
+            document.getElementById('adv-status-pill').innerText = 'READY';
+            document.getElementById('adv-health').innerText = 'Awaiting plot enclosure...';
+            document.getElementById('adv-nitrogen').innerText = '--';
+            document.getElementById('adv-moisture').innerText = '--';
+            document.getElementById('adv-action').innerText = 'Enclose a field boundary above to generate a tailored agronomic recommendation.';
+
+            if (chartInstance) chartInstance.destroy();
+        }
+
+        document.getElementById('btn-clear').addEventListener('click', clearExistingPlot);
+    </script>
+</body>
+</html> 
